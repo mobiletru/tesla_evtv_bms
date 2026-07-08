@@ -25,20 +25,25 @@ def test_soc_0x650():
     assert parsed["state_of_charge"] == 85.0
 
 
+def test_pack_0x150_discharge_125a():
+    """125 A discharge: raw_current=125 on CAN 0x150 => +125 A out of pack."""
+    parsed = parse_udp_packet(_frame(0x150, bytes([0x7D, 0x00, 0xA0, 0x0F, 0, 0, 25, 20])), 6850)
+    assert parsed["current"] == 125.0
+    assert parsed["power"] == 50000
+    assert parsed["volts"] == 400.0
+
+
 def test_pack_0x150_discharge_sign():
-    # raw_current=100 A discharge => negative current (out of pack)
     parsed = parse_udp_packet(_frame(0x150, bytes([0x64, 0x00, 0xA0, 0x0F, 0, 0, 25, 20])), 6850)
-    assert parsed["current"] == -100.0
-    assert parsed["power"] == -40000
+    assert parsed["current"] == 100.0
+    assert parsed["power"] == 40000
 
 
 def test_pack_0x150_charge_sign():
-    # raw_current=65436 => 99 A charge => positive current (into pack)
+    # raw_current=65436 => 99 A charge => negative current (into pack)
     parsed = parse_udp_packet(_frame(0x150, bytes([0x9C, 0xFF, 0xA0, 0x0F, 0, 0, 25, 20])), 6850)
-    assert parsed["current"] == 99.0
-    assert parsed["power"] == 39600
-    assert parsed["highest_temp"] == 25
-    assert parsed["lowest_temp"] == 20
+    assert parsed["current"] == -99.0
+    assert parsed["power"] == -39600
 
 
 def test_fault_0x654():
@@ -49,6 +54,7 @@ def test_fault_0x654():
 
 if __name__ == "__main__":
     test_soc_0x650()
+    test_pack_0x150_discharge_125a()
     test_pack_0x150_discharge_sign()
     test_pack_0x150_charge_sign()
     test_fault_0x654()

@@ -35,10 +35,20 @@ update_rolling_samples = _calc.update_rolling_samples
 
 def test_pack_metrics_from_cells():
     res = derive_volts_and_power(
-        {"average_cell": 3.805, "active_cells": 216, "current": -30},
+        {"average_cell": 3.805, "active_cells": 216, "current": 30},
         {"cells_in_series": 96},
     )
-    assert res == {"volts": 821.9, "power": -24657}
+    assert res == {"volts": 821.9, "power": 24657}
+
+
+def test_125a_discharge_derived_status():
+    derived = compute_derived_state(
+        {"current": 125.0, "power": 5000, "volts": 40.0},
+        {"pack_size": 22.0, "cells_in_series": 12},
+    )
+    assert derived["battery_status"] == "Discharging"
+    assert derived["discharge"] == 5000
+    assert derived["charge"] == 0.0
 
 
 def test_12s_two_modules_in_series():
@@ -77,24 +87,25 @@ def test_prefers_can_volts_when_derived_wrong():
 
 
 def test_sign_convention_and_status():
-    assert get_battery_status(30) == "Charging"
-    assert get_battery_status(-30) == "Discharging"
+    assert get_battery_status(30) == "Discharging"
+    assert get_battery_status(-30) == "Charging"
+    assert get_battery_status(125) == "Discharging"
     assert get_battery_status(0) == "Idle"
-    assert split_charge_discharge(100) == (0.0, 100.0)
-    assert split_charge_discharge(-50) == (50.0, 0.0)
+    assert split_charge_discharge(100) == (100.0, 0.0)
+    assert split_charge_discharge(-50) == (0.0, 50.0)
 
 
 def test_energy_accumulation():
     e = accumulate_energy(100, 3600, 0.0, 0.0)
-    assert e["charge"] == 0.1
+    assert e["discharge"] == 0.1
     e2 = accumulate_energy(-200, 1800, 1.0, 0.5)
-    assert round(e2["discharge"], 3) == 0.6
+    assert round(e2["charge"], 3) == 1.1
 
 
 def test_compute_derived_state_integration():
     raw = {
         "state_of_charge": 50,
-        "current": -30,
+        "current": 30,
         "average_cell": 3.805,
         "active_cells": 216,
         "highest_cell": 3.9,
@@ -104,18 +115,19 @@ def test_compute_derived_state_integration():
     prev_energy = {"charge": 0.0, "discharge": 0.0, "last_update": 1000.0}
 
     derived = compute_derived_state(raw, config, prev_energy=prev_energy, now=4600.0)
-    assert derived["discharge_energy"] == 24.657  # negative power => discharge
+    assert derived["discharge_energy"] == 24.657
     assert ENERGY_STATE_KEY in derived
 
     values = dict(raw)
     energy = dict(prev_energy)
     apply_derived_state(values, derived, energy)
-    assert values["power"] == -24657
+    assert values["power"] == 24657
     assert energy["last_update"] == 4600.0
 
 
 if __name__ == "__main__":
     test_pack_metrics_from_cells()
+    test_125a_discharge_derived_status()
     test_12s_two_modules_in_series()
     test_prefers_can_volts_when_derived_wrong()
     test_sign_convention_and_status()
