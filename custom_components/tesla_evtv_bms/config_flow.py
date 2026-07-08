@@ -31,6 +31,7 @@ class TeslaEVTVBMSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("max_cell_volts", default=DEFAULT_MAX_CELL_VOLTS): vol.Coerce(float),
             }),
             description_placeholders={
-                "info": "Configure the Tesla EVTV BMS listener",
+                "info": "Configure the Tesla EVTV BMS listener. "
+                "Cells in series (S): two Tesla modules wired in series = 12.",
             },
         )

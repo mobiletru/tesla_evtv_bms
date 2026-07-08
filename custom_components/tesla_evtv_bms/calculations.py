@@ -15,20 +15,67 @@ from typing import Any
 from .const import DEFAULT_PACK_SIZE, DEFAULT_CELLS_IN_SERIES
 
 ENERGY_STATE_KEY = "energy_state"
+CELLS_PER_MODULE = 6
+
+
+def resolve_cells_in_series(values: dict[str, Any], config: dict[str, Any]) -> int:
+    """Series cell count for pack voltage (S-count).
+
+    Priority:
+    1. total_cells from CAN 0x68F (modules × 6) — correct for modules wired in series
+    2. total_modules × 6 from CAN 0x68F
+    3. User-configured cells_in_series (when not the large-pack default)
+    4. active_cells from CAN 0x651 when it looks like a series count (≥ 6)
+    5. Config default / active_cells fallback
+    """
+    total_cells = values.get("total_cells")
+    if isinstance(total_cells, (int, float)) and total_cells > 0:
+        return int(total_cells)
+
+    total_modules = values.get("total_modules")
+    if isinstance(total_modules, (int, float)) and total_modules > 0:
+        return int(total_modules) * CELLS_PER_MODULE
+
+    configured = config.get("cells_in_series", DEFAULT_CELLS_IN_SERIES)
+    active = values.get("active_cells")
+
+    if configured and configured != DEFAULT_CELLS_IN_SERIES:
+        return int(configured)
+
+    if isinstance(active, (int, float)) and active >= CELLS_PER_MODULE:
+        return int(active)
+
+    if configured:
+        return int(configured)
+
+    if isinstance(active, (int, float)) and active > 0:
+        return int(active)
+
+    return DEFAULT_CELLS_IN_SERIES
 
 
 def derive_volts_and_power(values: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     """Derive pack voltage and power. Returns only computed keys."""
     derived: dict[str, Any] = {}
-    cells_series = values.get("active_cells") or config.get(
-        "cells_in_series", DEFAULT_CELLS_IN_SERIES
-    )
+    cells_series = resolve_cells_in_series(values, config)
     avg_cell = values.get("average_cell")
+    can_volts = values.get("volts")
+
+    derived_volts = None
     if avg_cell is not None and cells_series:
-        derived["volts"] = round(avg_cell * cells_series, 1)
+        derived_volts = round(avg_cell * cells_series, 1)
+
+    if isinstance(can_volts, (int, float)) and can_volts > 0:
+        # 0x150/0x151 pack voltage is authoritative when cell-derived drifts (e.g. 12S packs).
+        if derived_volts is None or abs(derived_volts - can_volts) / can_volts > 0.12:
+            derived["volts"] = round(can_volts, 1)
+        else:
+            derived["volts"] = derived_volts
+    elif derived_volts is not None:
+        derived["volts"] = derived_volts
 
     current = values.get("current")
-    volts = derived.get("volts", values.get("volts"))
+    volts = derived.get("volts", can_volts)
     if current is not None and volts is not None:
         derived["power"] = round(volts * current)
     return derived
