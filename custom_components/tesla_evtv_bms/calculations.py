@@ -83,15 +83,25 @@ def accumulate_energy(
     delta_seconds: float,
     prev_charge: float = 0.0,
     prev_discharge: float = 0.0,
-) -> dict[str, float]:
+) -> dict[str, float | str | None]:
     charge = prev_charge
     discharge = prev_discharge
+    increment = 0.0
+    flow = None
     if power is not None and delta_seconds > 0:
+        increment = (abs(power) * delta_seconds / 3600) / 1000
         if power > 0:
-            discharge += (power * delta_seconds / 3600) / 1000
+            discharge += increment
+            flow = "discharge"
         elif power < 0:
-            charge += (abs(power) * delta_seconds / 3600) / 1000
-    return {"charge": charge, "discharge": discharge}
+            charge += increment
+            flow = "charge"
+    return {
+        "charge": charge,
+        "discharge": discharge,
+        "increment": increment,
+        "flow": flow,
+    }
 
 
 def compute_derived_state(
@@ -143,9 +153,30 @@ def compute_derived_state(
             "charge": energy["charge"],
             "discharge": energy["discharge"],
             "last_update": now,
+            "increment": energy["increment"],
+            "flow": energy["flow"],
         }
 
     return derived
+
+
+UTILITY_METER_PERIODS = ("hour", "day", "week", "month", "year")
+
+
+def apply_period_energy_increments(
+    values: dict[str, Any],
+    energy_state: dict[str, Any],
+    periods: tuple[str, ...] = UTILITY_METER_PERIODS,
+) -> None:
+    """Add this tick's kWh increment to hour/day/week/month/year accumulators."""
+    flow = energy_state.get("flow")
+    increment = energy_state.get("increment", 0.0)
+    if not flow or not increment:
+        return
+    base = "discharge_energy" if flow == "discharge" else "charge_energy"
+    for label in periods:
+        meter_key = f"{base}_{label}"
+        values[meter_key] = round(values.get(meter_key, 0.0) + increment, 3)
 
 
 def apply_derived_state(
@@ -160,7 +191,10 @@ def apply_derived_state(
 
     energy_state = derived.get(ENERGY_STATE_KEY)
     if energy_state and coordinator_energy is not None:
-        coordinator_energy.update(energy_state)
+        coordinator_energy["charge"] = energy_state["charge"]
+        coordinator_energy["discharge"] = energy_state["discharge"]
+        coordinator_energy["last_update"] = energy_state["last_update"]
+        apply_period_energy_increments(values, energy_state)
 
 
 def update_rolling_samples(samples: list[float], new_power: float | None, window: int) -> list[float]:
