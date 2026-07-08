@@ -4,7 +4,8 @@ CAN layouts follow the community reference:
 https://github.com/wreuvers/tesla_evtv_bms
 
 Extended frames (0x652, 0x654, 0x68F) from mobiletru PRs to the core repo.
-Sign convention on 0x150/0x151: positive = discharge, negative = charge.
+Sign convention on 0x150/0x151 (matches wreuvers/EVTV CAN):
+  positive current/power = charging into pack, negative = discharging.
 """
 
 import logging
@@ -69,8 +70,8 @@ def parse_udp_packet(payload: bytes, port: int) -> dict | None:
         result["active_cells"] = payload[7]
 
     elif can_id == 0x151:
-        current = s32(payload[0:4]) / 100.0
-        power = s32(payload[4:8]) / 100.0
+        current = s32(payload[0:4]) / 100.0 * -1
+        power = s32(payload[4:8]) / 100.0 * -1
         volts = power / current if current else 0
         result.update(
             {
@@ -90,11 +91,12 @@ def parse_udp_packet(payload: bytes, port: int) -> dict | None:
 
         if raw_current > 32768:
             charging_current = 65535 - raw_current
-            current = -float(charging_current)
-            power = -round(volts * charging_current)
+            current = float(charging_current)
+            power = round(volts * charging_current)
         else:
-            current = float(raw_current)
-            power = round(volts * raw_current)
+            discharging_current = float(raw_current)
+            current = -discharging_current
+            power = -round(volts * discharging_current)
 
         result.update(
             {

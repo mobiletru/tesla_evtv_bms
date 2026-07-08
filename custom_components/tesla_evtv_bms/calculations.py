@@ -2,11 +2,11 @@
 
 No Home Assistant dependencies — fully unit-testable.
 
-Sign convention (EVTV flow direction):
-  - Positive current / power => DISCHARGE (out of the pack)
-  - Negative current / power => CHARGE (into the pack)
-  - current > +1  => "Discharging"
-  - current < -1  => "Charging"
+Sign convention (matches CAN 0x150/0x151 parser):
+  - Positive current / power => CHARGE (into the pack)
+  - Negative current / power => DISCHARGE (out of the pack)
+  - current > +1  => "Charging"
+  - current < -1  => "Discharging"
   - else          => "Idle"
 """
 
@@ -85,9 +85,9 @@ def get_battery_status(current: float | None) -> str:
     if current is None:
         return ""
     if current > 1:
-        return "Discharging"
-    if current < -1:
         return "Charging"
+    if current < -1:
+        return "Discharging"
     return "Idle"
 
 
@@ -95,9 +95,9 @@ def split_charge_discharge(power: float | None) -> tuple[float, float]:
     if power is None:
         return 0.0, 0.0
     if power > 0:
-        return power, 0.0
+        return 0.0, power
     if power < 0:
-        return 0.0, abs(power)
+        return abs(power), 0.0
     return 0.0, 0.0
 
 
@@ -138,11 +138,11 @@ def accumulate_energy(
     if power is not None and delta_seconds > 0:
         increment = (abs(power) * delta_seconds / 3600) / 1000
         if power > 0:
-            discharge += increment
-            flow = "discharge"
-        elif power < 0:
             charge += increment
             flow = "charge"
+        elif power < 0:
+            discharge += increment
+            flow = "discharge"
     return {
         "charge": charge,
         "discharge": discharge,
@@ -269,10 +269,10 @@ def compute_hours_to(
     hours_full = 0.0
     if avg_power is not None and abs(avg_power) > 0:
         rate_kw = abs(avg_power) / 1000.0
-        if status == "Discharging":
-            hours_empty = round(available_energy / rate_kw, 2)
-        elif status == "Charging":
+        if status == "Charging":
             hours_full = round((pack_size - available_energy) / rate_kw, 2)
+        elif status == "Discharging":
+            hours_empty = round(available_energy / rate_kw, 2)
     return {"hours_to_empty": hours_empty, "hours_to_full": hours_full}
 
 

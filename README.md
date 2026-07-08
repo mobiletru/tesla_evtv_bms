@@ -2,7 +2,7 @@
 
 Home Assistant integration for the EVTV Tesla BMS controller. Listens on a UDP port and decodes CAN data into sensors.
 
-Fork of the community integration at [wreuvers/tesla_evtv_bms](https://github.com/wreuvers/tesla_evtv_bms), extended for multi-module Tesla packs, EVTV sign convention, additional CAN frames, and fixed utility-meter accumulation.
+Fork of the community integration at [wreuvers/tesla_evtv_bms](https://github.com/wreuvers/tesla_evtv_bms), extended for multi-module Tesla packs, additional CAN frames, and fixed utility-meter accumulation. Current sign: **positive = charging**, **negative = discharging** (matches upstream CAN layout).
 
 ## Features
 
