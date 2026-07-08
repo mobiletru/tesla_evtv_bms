@@ -20,7 +20,11 @@ if [ ! -f "$TOKEN_FILE" ] && [ -z "$GITHUB_TOKEN" ]; then
 fi
 
 chmod +x scripts/github-credential.sh
-git remote set-url origin "https://github.com/${REPO}.git"
+if git remote get-url origin >/dev/null 2>&1; then
+  git remote set-url origin "https://github.com/${REPO}.git"
+else
+  git remote add origin "https://github.com/${REPO}.git"
+fi
 git config credential.helper "$ROOT/scripts/github-credential.sh"
 git config branch."$BRANCH".remote origin
 git config branch."$BRANCH".merge "refs/heads/${BRANCH}"
