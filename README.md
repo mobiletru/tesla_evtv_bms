@@ -15,7 +15,7 @@ Fork of the community integration at [wreuvers/tesla_evtv_bms](https://github.co
 - **Every CAN ID on the bus becomes a sensor.** IDs with a known layout (table below) get
   named, scaled fields; anything else still shows up as `can_<id>_raw` (full hex payload)
   and `can_<id>_u16` (first two bytes as a graphable number) instead of being dropped
-  silently — see `dashboards/debug_dashboard.yaml` for reverse-engineering these.
+  silently — see `dashboards/ha_webbox_dashboard.yaml` for reverse-engineering these.
 - Optional SMA Sunny WebBox polling (`home.ajax`, no auth) for live solar power / daily
   yield / total yield, as its own device linked to the pack. RPC (parameter-level data,
   MD5-hashed password) is attempted best-effort and ignored if the WebBox has RPC
@@ -51,7 +51,7 @@ these have a confirmed decode yet.
 5. Fill in the CAN listener port and pack config. Leave **WebBox host** blank to skip
    solar sensors, or set it to your WebBox's IP (e.g. `192.168.100.180`) plus its
    access password if you've set one.
-6. Import `dashboards/debug_dashboard.yaml` as a new dashboard (Settings → Dashboards →
+6. Import `dashboards/ha_webbox_dashboard.yaml` as a new dashboard (Settings → Dashboards →
    **+ Add Dashboard** → *New dashboard from YAML*) and replace `EVTV_NAME` throughout
    with your pack's slugified device name — see the comment at the top of that file.
 

@@ -1,4 +1,4 @@
-# Combined debug dashboard: EVTV Tesla BMS (decoded + raw CAN) + SMA Sunny WebBox.
+# HA Webbox Dashboard: combined view of EVTV Tesla BMS (decoded + raw CAN) + SMA Sunny WebBox.
 #
 # Install:
 #   Settings -> Dashboards -> + Add Dashboard -> New dashboard from YAML,
@@ -17,7 +17,7 @@
 # reverse-engineer scale/units, then add a real decode to parser.py and
 # retire the corresponding raw sensor.
 
-title: EVTV + WebBox Debug
+title: HA Webbox Dashboard
 views:
   - title: Overview
     path: overview
