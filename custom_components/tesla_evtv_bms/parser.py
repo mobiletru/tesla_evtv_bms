@@ -44,8 +44,13 @@ def parse_udp_packet(payload: bytes, port: int) -> dict | None:
     _LOGGER.debug("[tesla_evtv_bms] Parsed CAN ID: %s", hex(can_id))
 
     if can_id not in VALID_CAN_IDS:
-        _LOGGER.debug("[tesla_evtv_bms] Ignored unrecognized CAN ID: %s", hex(can_id))
-        return None
+        # Unrecognized frame: still surface it instead of dropping it silently, so
+        # every CAN ID seen on the bus shows up as a sensor even without a known layout.
+        data = payload[0:8]
+        return {
+            f"can_{can_id:03x}_raw": data.hex(),
+            f"can_{can_id:03x}_u16": data[0] + (data[1] << 8),
+        }
 
     def u16(b0, b1):
         return b0 + (b1 << 8)

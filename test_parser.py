@@ -52,10 +52,28 @@ def test_fault_0x654():
     assert parsed["power_source"] == "12V"
 
 
+def test_unknown_can_id_falls_back_to_raw_sensor():
+    """CAN IDs outside VALID_CAN_IDS (e.g. per-module frames 0x653/0x655 seen on a live
+    EVTV CAN-DUE v2 bus capture) must still surface as sensors, not be dropped."""
+    parsed = parse_udp_packet(_frame(0x655, bytes([0x3f, 0x41, 0x5c, 0x17, 0x32, 0x42, 0, 0])), 6850)
+    assert parsed == {
+        "can_655_raw": "3f415c1732420000",
+        "can_655_u16": 0x413f,
+    }
+
+
+def test_unknown_can_id_zero_payload():
+    parsed = parse_udp_packet(_frame(0x653, bytes([0, 0, 0, 0, 0, 0, 0, 0])), 6850)
+    assert parsed["can_653_raw"] == "0000000000000000"
+    assert parsed["can_653_u16"] == 0
+
+
 if __name__ == "__main__":
     test_soc_0x650()
     test_pack_0x150_discharge_125a()
     test_pack_0x150_discharge_sign()
     test_pack_0x150_charge_sign()
     test_fault_0x654()
+    test_unknown_can_id_falls_back_to_raw_sensor()
+    test_unknown_can_id_zero_payload()
     print("test_parser.py: ok")

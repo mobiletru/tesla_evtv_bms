@@ -1,0 +1,163 @@
+# Combined debug dashboard: EVTV Tesla BMS (decoded + raw CAN) + SMA Sunny WebBox.
+#
+# Install:
+#   Settings -> Dashboards -> + Add Dashboard -> New dashboard from YAML,
+#   or reference this file directly if you run Lovelace in YAML mode.
+#
+# Before importing: find-and-replace EVTV_NAME below with your pack's
+# device name from the integration setup, lowercased with spaces -> underscores
+# (e.g. pack name "Pack1" -> EVTV_NAME becomes pack1). This must match the
+# entity_id prefix Home Assistant generated for your config entry.
+#
+# Raw CAN entities below (can_6xx_raw / can_6xx_u16) are the frames this
+# integration doesn't have a named decode for yet — captured live from an
+# EVTV CAN-DUE v2 broadcasting on UDP 6550. 0x653/0x655-0x65a look like
+# per-module telemetry (repeat every ~1s, count tracks 0x68f total_modules);
+# 0x680-0x687 are low-frequency/event frames. Use the raw hex + u16 views to
+# reverse-engineer scale/units, then add a real decode to parser.py and
+# retire the corresponding raw sensor.
+
+title: EVTV + WebBox Debug
+views:
+  - title: Overview
+    path: overview
+    icon: mdi:view-dashboard
+    cards:
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            entity: sensor.EVTV_NAME_state_of_charge
+            name: State of Charge
+            min: 0
+            max: 100
+            severity:
+              red: 15
+              yellow: 40
+              green: 60
+          - type: gauge
+            entity: sensor.EVTV_NAME_power
+            name: Pack Power
+            min: -20000
+            max: 20000
+            severity:
+              red: 15000
+              yellow: 8000
+              green: 0
+      - type: entities
+        title: Pack Summary
+        entities:
+          - entity: sensor.EVTV_NAME_summary
+          - entity: sensor.EVTV_NAME_battery_status
+          - entity: sensor.EVTV_NAME_volts
+          - entity: sensor.EVTV_NAME_current
+          - entity: sensor.EVTV_NAME_available_energy
+          - entity: sensor.EVTV_NAME_hours_to_empty
+          - entity: sensor.EVTV_NAME_hours_to_full
+      - type: entities
+        title: Solar (SMA WebBox)
+        entities:
+          - entity: sensor.EVTV_NAME_webbox_power
+          - entity: sensor.EVTV_NAME_webbox_daily_yield
+          - entity: sensor.EVTV_NAME_webbox_total_yield
+      - type: history-graph
+        title: Power Trend
+        hours_to_show: 12
+        entities:
+          - entity: sensor.EVTV_NAME_power
+          - entity: sensor.EVTV_NAME_webbox_power
+
+  - title: Battery Detail
+    path: battery-detail
+    icon: mdi:battery-high
+    cards:
+      - type: entities
+        title: Cells
+        entities:
+          - entity: sensor.EVTV_NAME_lowest_cell
+          - entity: sensor.EVTV_NAME_highest_cell
+          - entity: sensor.EVTV_NAME_average_cell
+          - entity: sensor.EVTV_NAME_cell_difference
+          - entity: sensor.EVTV_NAME_trigger_cell_voltage
+          - entity: sensor.EVTV_NAME_max_cells
+          - entity: sensor.EVTV_NAME_active_cells
+      - type: entities
+        title: Temperatures
+        entities:
+          - entity: sensor.EVTV_NAME_lowest_temp
+          - entity: sensor.EVTV_NAME_highest_temp
+      - type: entities
+        title: Contactors & Faults
+        entities:
+          - entity: sensor.EVTV_NAME_contactor_positive
+          - entity: sensor.EVTV_NAME_contactor_negative
+          - entity: sensor.EVTV_NAME_charge_enable
+          - entity: sensor.EVTV_NAME_heat_enable
+          - entity: sensor.EVTV_NAME_power_source
+          - entity: sensor.EVTV_NAME_fault_code
+          - entity: sensor.EVTV_NAME_fault_status
+      - type: entities
+        title: Cutoffs & Pack Config
+        entities:
+          - entity: sensor.EVTV_NAME_high_voltage_cutoff
+          - entity: sensor.EVTV_NAME_low_voltage_cutoff
+          - entity: sensor.EVTV_NAME_total_modules
+          - entity: sensor.EVTV_NAME_total_cells
+      - type: entities
+        title: Energy Totals
+        entities:
+          - entity: sensor.EVTV_NAME_charge_energy
+          - entity: sensor.EVTV_NAME_discharge_energy
+          - entity: sensor.EVTV_NAME_discharge_energy_day
+          - entity: sensor.EVTV_NAME_discharge_energy_week
+          - entity: sensor.EVTV_NAME_discharge_energy_month
+          - entity: sensor.EVTV_NAME_charge_energy_day
+          - entity: sensor.EVTV_NAME_charge_energy_week
+          - entity: sensor.EVTV_NAME_charge_energy_month
+
+  - title: Raw CAN Bus (Debug)
+    path: raw-can
+    icon: mdi:radio-tower
+    cards:
+      - type: markdown
+        content: >
+          Frames without a named decode yet. `_raw` is the full 8-byte
+          payload as hex; `_u16` is bytes 0-1 as a little-endian integer,
+          given only so the value is graphable — it is **not** a validated
+          decode. Cross-reference against known pack behavior (charging vs
+          idle, module count) before trusting these as real units.
+      - type: entities
+        title: Likely per-module telemetry (0x653, 0x655-0x65a)
+        entities:
+          - entity: sensor.EVTV_NAME_can_653_raw
+          - entity: sensor.EVTV_NAME_can_653_u16
+          - entity: sensor.EVTV_NAME_can_655_raw
+          - entity: sensor.EVTV_NAME_can_655_u16
+          - entity: sensor.EVTV_NAME_can_656_raw
+          - entity: sensor.EVTV_NAME_can_656_u16
+          - entity: sensor.EVTV_NAME_can_657_raw
+          - entity: sensor.EVTV_NAME_can_657_u16
+          - entity: sensor.EVTV_NAME_can_658_raw
+          - entity: sensor.EVTV_NAME_can_658_u16
+          - entity: sensor.EVTV_NAME_can_659_raw
+          - entity: sensor.EVTV_NAME_can_659_u16
+          - entity: sensor.EVTV_NAME_can_65a_raw
+          - entity: sensor.EVTV_NAME_can_65a_u16
+      - type: entities
+        title: Low-frequency / event frames (0x680-0x687)
+        entities:
+          - entity: sensor.EVTV_NAME_can_680_raw
+          - entity: sensor.EVTV_NAME_can_681_raw
+          - entity: sensor.EVTV_NAME_can_682_raw
+          - entity: sensor.EVTV_NAME_can_684_raw
+          - entity: sensor.EVTV_NAME_can_685_raw
+          - entity: sensor.EVTV_NAME_can_686_raw
+          - entity: sensor.EVTV_NAME_can_687_raw
+      - type: history-graph
+        title: Raw u16 trend (module frames)
+        hours_to_show: 1
+        entities:
+          - entity: sensor.EVTV_NAME_can_655_u16
+          - entity: sensor.EVTV_NAME_can_656_u16
+          - entity: sensor.EVTV_NAME_can_657_u16

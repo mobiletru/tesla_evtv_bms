@@ -73,6 +73,9 @@ SENSOR_TYPES = {
     "total_modules": "",
     "total_cells": "",
     "summary": "",
+    "webbox_power": "W",
+    "webbox_daily_yield": "kWh",
+    "webbox_total_yield": "kWh",
 }
 
 ICON_MAP = {
@@ -123,7 +126,13 @@ ICON_MAP = {
     "total_modules": "mdi:cube-outline",
     "total_cells": "mdi:checkbox-multiple-marked-circle",
     "summary": "mdi:clock-outline",
+    "webbox_power": "mdi:solar-power",
+    "webbox_daily_yield": "mdi:weather-sunny",
+    "webbox_total_yield": "mdi:chart-areaspline",
 }
+
+WEBBOX_KEY_PREFIXES = ("webbox_",)
+RAW_CAN_KEY_PREFIX = "can_"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -294,10 +303,23 @@ class TeslaEvtvSensor(RestoreEntity):
             ):
                 if soc >= threshold:
                     return icon
+        if self._key.startswith(RAW_CAN_KEY_PREFIX):
+            return "mdi:radio-tower"
         return ICON_MAP.get(self._key, "mdi:chip")
 
     @property
     def device_info(self):
+        if self._key.startswith(WEBBOX_KEY_PREFIXES):
+            device_id = f"{self._device}_webbox"
+            return {
+                "identifiers": {(DOMAIN, device_id)},
+                "name": f"{self._device} SMA WebBox",
+                "manufacturer": "SMA Solar Technology",
+                "model": "Sunny WebBox",
+                "entry_type": "service",
+                "suggested_area": "Solar",
+                "via_device": (DOMAIN, self._device),
+            }
         return {
             "identifiers": {(DOMAIN, self._device)},
             "name": self._device,
@@ -311,6 +333,10 @@ class TeslaEvtvSensor(RestoreEntity):
     def device_class(self):
         if self._key.endswith("_energy") or "_energy_" in self._key or self._key in ("available_energy",):
             return "energy"
+        if self._key == "webbox_daily_yield" or self._key == "webbox_total_yield":
+            return "energy"
+        if self._key == "webbox_power":
+            return "power"
         if self._key in (
             "volts",
             "lowest_cell",
@@ -334,6 +360,12 @@ class TeslaEvtvSensor(RestoreEntity):
     def state_class(self):
         if self._key.endswith("_energy") or "_energy_" in self._key or self._key in ("available_energy",):
             return "total_increasing"
+        if self._key in ("webbox_total_yield", "webbox_daily_yield"):
+            return "total_increasing"
+        if self._key == "webbox_power":
+            return "measurement"
+        if self._key.startswith(RAW_CAN_KEY_PREFIX) and self._key.endswith("_u16"):
+            return "measurement"
         if self._key in (
             "power",
             "volts",
