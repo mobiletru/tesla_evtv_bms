@@ -1,11 +1,9 @@
-# MOVED — retired
+# Retired — use Sunny Island only
 
-This repository is **retired**.
+This repository is **no longer an installable integration**.
 
-**Use only:** https://github.com/mobiletru/sunny_island
+Tesla EVTV BMS ships inside the one plant app:
 
-That single HAOS app includes:
-- Tesla EVTV BMS custom integration installer
-- Live Sunny Island plant dashboard (Enphase + Tessie)
+**https://github.com/mobiletru/sunny_island**
 
-This repo may be deleted.
+Install once: **Settings → Apps → Repositories** → add that URL.
